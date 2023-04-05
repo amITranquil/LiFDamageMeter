@@ -174,7 +174,7 @@
             this.lblTotalHit.AutoSize = true;
             this.lblTotalHit.Depth = 0;
             this.lblTotalHit.Font = new System.Drawing.Font("Roboto", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
-            this.lblTotalHit.Location = new System.Drawing.Point(99, 92);
+            this.lblTotalHit.Location = new System.Drawing.Point(99, 94);
             this.lblTotalHit.MouseState = MaterialSkin.MouseState.HOVER;
             this.lblTotalHit.Name = "lblTotalHit";
             this.lblTotalHit.Size = new System.Drawing.Size(10, 19);
@@ -186,7 +186,7 @@
             this.lblTotalSlave.AutoSize = true;
             this.lblTotalSlave.Depth = 0;
             this.lblTotalSlave.Font = new System.Drawing.Font("Roboto", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
-            this.lblTotalSlave.Location = new System.Drawing.Point(508, 92);
+            this.lblTotalSlave.Location = new System.Drawing.Point(508, 94);
             this.lblTotalSlave.MouseState = MaterialSkin.MouseState.HOVER;
             this.lblTotalSlave.Name = "lblTotalSlave";
             this.lblTotalSlave.Size = new System.Drawing.Size(10, 19);
@@ -198,7 +198,7 @@
             this.lblTotalTakenHit.AutoSize = true;
             this.lblTotalTakenHit.Depth = 0;
             this.lblTotalTakenHit.Font = new System.Drawing.Font("Roboto", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
-            this.lblTotalTakenHit.Location = new System.Drawing.Point(264, 92);
+            this.lblTotalTakenHit.Location = new System.Drawing.Point(264, 94);
             this.lblTotalTakenHit.MouseState = MaterialSkin.MouseState.HOVER;
             this.lblTotalTakenHit.Name = "lblTotalTakenHit";
             this.lblTotalTakenHit.Size = new System.Drawing.Size(10, 19);
@@ -210,7 +210,7 @@
             this.lblTotalKill.AutoSize = true;
             this.lblTotalKill.Depth = 0;
             this.lblTotalKill.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
-            this.lblTotalKill.Location = new System.Drawing.Point(426, 91);
+            this.lblTotalKill.Location = new System.Drawing.Point(426, 94);
             this.lblTotalKill.MouseState = MaterialSkin.MouseState.HOVER;
             this.lblTotalKill.Name = "lblTotalKill";
             this.lblTotalKill.Size = new System.Drawing.Size(10, 19);
