@@ -21,6 +21,57 @@ namespace LiFDamageMeter
             materialSkinManager.AddFormToManage(this);
             materialSkinManager.Theme = MaterialSkinManager.Themes.DARK;
             materialSkinManager.ColorScheme = new ColorScheme(Primary.BlueGrey800, Primary.BlueGrey900, Primary.BlueGrey500, Accent.LightBlue200, TextShade.WHITE);
+            
+            // Premium zebra pattern events
+            SetupPremiumZebraPattern();
+        }
+
+        private void SetupPremiumZebraPattern()
+        {
+            // Mouse hover effect for rows
+            dataGridView1.CellMouseEnter += (sender, e) =>
+            {
+                if (e.RowIndex >= 0)
+                {
+                    dataGridView1.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(70, 70, 85);
+                }
+            };
+
+            dataGridView1.CellMouseLeave += (sender, e) =>
+            {
+                if (e.RowIndex >= 0)
+                {
+                    // Restore zebra pattern
+                    if (e.RowIndex % 2 == 0)
+                        dataGridView1.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(40, 40, 45);
+                    else
+                        dataGridView1.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(50, 50, 55);
+                }
+            };
+        }
+
+        private string ExtractTimestamp(string line)
+        {
+            // Different timestamp patterns in log files
+            var patterns = new[]
+            {
+                @"\[(\d{2}:\d{2}:\d{2})\]",           // [HH:MM:SS]
+                @"(\d{2}:\d{2}:\d{2})",               // HH:MM:SS
+                @"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]", // [YYYY-MM-DD HH:MM:SS]
+                @"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})",     // YYYY-MM-DD HH:MM:SS
+                @"(\d{1,2}:\d{2}:\d{2} \w{2})",       // H:MM:SS AM/PM
+            };
+
+            foreach (var pattern in patterns)
+            {
+                var match = Regex.Match(line, pattern);
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+            }
+
+            return DateTime.Now.ToString("HH:mm:ss"); // Fallback to current time
         }
 
         private void materialButton1_Click(object sender, EventArgs e)
@@ -32,6 +83,15 @@ namespace LiFDamageMeter
             var killed = new List<string>();
             var enslaved = new List<string>();
             var dead = new List<string>();
+            
+            // Zaman damgaları için listeler
+            var hitTimes = new List<string>();
+            var hitwhoTimes = new List<string>();
+            var igothitTimes = new List<string>();
+            var tookhitTimes = new List<string>();
+            var killedTimes = new List<string>();
+            var enslavedTimes = new List<string>();
+            var deadTimes = new List<string>();
             bool hasTaken = false;
             try
             {
@@ -42,191 +102,220 @@ namespace LiFDamageMeter
 
                     if (openFileDialog.ShowDialog() == DialogResult.OK)
                     {
-
                         var lines = File.ReadAllLines(openFileDialog.FileName);
 
                         foreach (var line in lines)
                         {
-                            var regExp1 = new Regex("(have hit)");
+                            // DÜZELTİLDİ: "You have hit" mesajlarını yakala
+                            var regExp1 = new Regex(@"You have hit");
                             if (regExp1.IsMatch(line))
                             {
-                                var regExp3 = new Regex("(?<=\\>)(\\d*[0-9][.]\\d*[0-9])");
-                                if (regExp3.IsMatch(line))
+                                // DÜZELTİLDİ: HTML etiketleri içindeki hasar değerini al
+                                // Örnek: <spush><color:C65F5F>29.36<spop>
+                                var regExp3 = new Regex(@"<spush><color:C65F5F>(\d+\.\d+)<spop> of");
+                                var match = regExp3.Match(line);
+                                if (match.Success)
                                 {
-                                    hit.Add(regExp3.Match(line).Groups[1].Value);
+                                    hit.Add(match.Groups[1].Value);
+                                    hitTimes.Add(ExtractTimestamp(line));
+                                }
+
+                                // DÜZELTİLDİ: Kime vurduğunu al (HTML etiketleri içinden)
+                                var regExpWho = new Regex(@"You have hit <spush><color:C65F5F>([^<]+)<spop>");
+                                var matchWho = regExpWho.Match(line);
+                                if (matchWho.Success)
+                                {
+                                    hitwho.Add("to " + matchWho.Groups[1].Value);
+                                    hitwhoTimes.Add(ExtractTimestamp(line));
                                 }
                             }
 
-                            var regExp2 = new Regex("(has hit)");
+                            // DÜZELTİLDİ: "has hit you" mesajlarını yakala
+                            var regExp2 = new Regex(@"has hit you");
                             if (regExp2.IsMatch(line))
                             {
-                                var regExp3 = new Regex("(?<=\\>)(\\d*[0-9][.]\\d*[0-9])");
-                                if (regExp3.IsMatch(line))
+                                // DÜZELTİLDİ: Aldığın hasar değerini al
+                                var regExp3 = new Regex(@"<spush><color:C65F5F>(\d+\.\d+)<spop> of");
+                                var match = regExp3.Match(line);
+                                if (match.Success)
                                 {
-                                    tookhit.Add(regExp3.Match(line).Groups[1].Value);
+                                    tookhit.Add(match.Groups[1].Value);
+                                    tookhitTimes.Add(ExtractTimestamp(line));
+                                }
+
+                                // DÜZELTİLDİ: Kim vurduğunu al
+                                var regExpWho = new Regex(@"<spush><color:C65F5F>([^<]+)<spop> has hit you");
+                                var matchWho = regExpWho.Match(line);
+                                if (matchWho.Success)
+                                {
+                                    igothit.Add("from " + matchWho.Groups[1].Value);
+                                    igothitTimes.Add(ExtractTimestamp(line));
                                 }
                             }
-                            var regExp4 = new Regex(@"(?<=have killed\s+)\w+");
-                            Match match = regExp4.Match(line);
-                            if (match.Success)
+
+                            // Killed - multiple patterns to catch different formats
+                            var regExp4 = new Regex(@"have killed\s+<spush><color:C65F5F>([^<]+)<spop>");
+                            Match matchKill = regExp4.Match(line);
+                            if (matchKill.Success)
                             {
-                                killed.Add(match.Value);
+                                killed.Add(matchKill.Groups[1].Value);
+                                killedTimes.Add(ExtractTimestamp(line));
                             }
-                            var regExp5 = new Regex(@"(?<=have enslaved <spush><color:C65F5F>)\w+\s+\w+");
+                            else
+                            {
+                                // Alternative kill pattern
+                                var regExp4Alt = new Regex(@"You have killed\s+([^<>\r\n]+)");
+                                var matchKillAlt = regExp4Alt.Match(line);
+                                if (matchKillAlt.Success)
+                                {
+                                    killed.Add(matchKillAlt.Groups[1].Value.Trim());
+                                    killedTimes.Add(ExtractTimestamp(line));
+                                }
+                                else
+                                {
+                                    // Even more basic kill pattern
+                                    var regExp4Basic = new Regex(@"killed\s+([A-Za-z0-9_]+)");
+                                    var matchKillBasic = regExp4Basic.Match(line);
+                                    if (matchKillBasic.Success)
+                                    {
+                                        killed.Add(matchKillBasic.Groups[1].Value);
+                                        killedTimes.Add(ExtractTimestamp(line));
+                                    }
+                                }
+                            }
+
+                            // Enslaved - zaten doğru çalışıyor
+                            var regExp5 = new Regex(@"have enslaved <spush><color:C65F5F>([^<]+)<spop>");
                             Match matchEnslave = regExp5.Match(line);
                             if (matchEnslave.Success)
                             {
-                                enslaved.Add(matchEnslave.Value);
+                                enslaved.Add(matchEnslave.Groups[1].Value);
+                                enslavedTimes.Add(ExtractTimestamp(line));
                             }
 
-                            var regExp6 = new Regex(@"(?<=have hit\s+)[\w-]+");
-                            Match matchHitwho = regExp6.Match(line);
-                            if (matchHitwho.Success)
-                            {
-                                hitwho.Add("to " + matchHitwho.Value);
-                            }
-
-                            var regExp7 = new Regex(@"([\w-]+(?<!-))[\w-]+<spop> has hit you");
-                            Match matchTakeDamage = regExp7.Match(line);
-                            if (matchTakeDamage.Success)
-                            {
-                                igothit.Add("from " + matchTakeDamage.Groups[1].Value);
-                            }
+                            // Death detection
                             var regExp99 = new Regex("(DeathWindow)");
                             if (regExp99.IsMatch(line))
-                            { hasTaken = true; }
+                            {
+                                hasTaken = true;
+                            }
                             else if (hasTaken)
                             {
-                                var regexDeath = new Regex("(Message: <spush><color:C65F5F>)[\\w-]+");
-                                if (regexDeath.IsMatch(line))
+                                // DÜZELTİLDİ: Death mesajını daha güvenli parse et
+                                var regexDeath = new Regex(@"Message: <spush><color:C65F5F>([^<]+)<spop>");
+                                var matchDeath = regexDeath.Match(line);
+                                if (matchDeath.Success)
                                 {
-                                    string matchedString = regexDeath.Match(line).Value;
-                                    int index = matchedString.IndexOf('>') + 15 ;
-                                    string output = matchedString.Substring(index);
-                                    dead.Add(output);
+                                    dead.Add(matchDeath.Groups[1].Value);
+                                    deadTimes.Add(ExtractTimestamp(line));
                                     hasTaken = false;
                                 }
                             }
-
-
                         }
 
-
+                        // Toplamları hesapla
                         var totalHit = hit.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).Sum();
-                        lblTotalHit.Text = totalHit.ToString();
+                        lblTotalHit.Text = totalHit.ToString("F2");
+
                         var totalTookHit = tookhit.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).Sum();
-                        lblTotalTakenHit.Text = totalTookHit.ToString();
+                        lblTotalTakenHit.Text = totalTookHit.ToString("F2");
+
                         lblTotalKill.Text = killed.Count.ToString();
                         lblTotalSlave.Text = enslaved.Count.ToString();
+                        lblTotalDeath.Text = dead.Count.ToString();
 
-
-
+                        // DataGridView'i hazırla
                         dataGridView1.Rows.Clear();
                         dataGridView1.Columns.Clear();
-                        dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+                        dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
+                        // Kategorize edilmiş kolonlar
+                        dataGridView1.Columns.Add("DamageDealt", "💀 Dealt Damage");
+                        dataGridView1.Columns.Add("DamageTarget", "🎯 Who Hit");
+                        dataGridView1.Columns.Add("DamageTime", "🕒 Time");
+                        dataGridView1.Columns.Add("DamageTaken", "🛡️ Taken Damage");
+                        dataGridView1.Columns.Add("DamageSource", "⚔️ Who Hit You");
+                        dataGridView1.Columns.Add("TakenTime", "🕒 Time");
+                        dataGridView1.Columns.Add("Kills", "💀 Kills");
+                        dataGridView1.Columns.Add("KillTime", "🕒 Time");
+                        dataGridView1.Columns.Add("Deaths", "☠️ Deaths");
+                        dataGridView1.Columns.Add("DeathTime", "🕒 Time");
+                        dataGridView1.Columns.Add("Enslaved", "⛓️ Enslaved");
+                        dataGridView1.Columns.Add("EnslavedTime", "🕒 Time");
 
-                        dataGridView1.Columns.Add("Hit", "Dealed Damages");
-                        dataGridView1.Columns.Add("Hitwho", "Who Did You Hit");
-                        dataGridView1.Columns.Add("TookHit", "Taken Damages");
-                        dataGridView1.Columns.Add("Igothit", "Who Hit You");
-                        dataGridView1.Columns.Add("Killed", "Killed");
-                        dataGridView1.Columns.Add("Enslaved", "Enslaved");
-                        dataGridView1.Columns.Add("Death", "Death");
+                        // Kolon genişlikleri - damage kolonları daha geniş
+                        dataGridView1.Columns["DamageDealt"].FillWeight = 70;   // Dar - sadece sayılar
+                        dataGridView1.Columns["DamageTarget"].FillWeight = 150;  // Geniş - isimler
+                        dataGridView1.Columns["DamageTime"].FillWeight = 60;     // Dar - zaman
+                        dataGridView1.Columns["DamageTaken"].FillWeight = 70;   // Dar - sadece sayılar  
+                        dataGridView1.Columns["DamageSource"].FillWeight = 150; // Geniş - isimler
+                        dataGridView1.Columns["TakenTime"].FillWeight = 60;     // Dar - zaman
+                        dataGridView1.Columns["Kills"].FillWeight = 100;        // Orta - isimler
+                        dataGridView1.Columns["KillTime"].FillWeight = 60;      // Dar - zaman
+                        dataGridView1.Columns["Deaths"].FillWeight = 100;       // Orta - isimler
+                        dataGridView1.Columns["DeathTime"].FillWeight = 60;     // Dar - zaman
+                        dataGridView1.Columns["Enslaved"].FillWeight = 100;     // Orta - isimler
+                        dataGridView1.Columns["EnslavedTime"].FillWeight = 60;  // Dar - zaman
 
+                        // En uzun liste uzunluğunu bul
+                        int maxRowCount = new[] {
+                            hit.Count,
+                            hitwho.Count,
+                            tookhit.Count,
+                            igothit.Count,
+                            killed.Count,
+                            dead.Count,
+                            enslaved.Count
+                        }.Max();
 
-
-                        int maxRowCount = Math.Max(hit.Count, hitwho.Count);
+                        // Satırları doldur ve zebra pattern uygula
                         for (int i = 0; i < maxRowCount; i++)
                         {
-                            if (i < hit.Count)
-                            {
-                                dataGridView1.Rows.Add(hit[i]);
-                            }
-                            else
-                            {
-                                dataGridView1.Rows.Add("");
-                            }
-                            if (i < hitwho.Count)
-                            {
-                                dataGridView1.Rows[i].Cells[1].Value = hitwho[i];
-                            }
-                            else
-                            {
-                                dataGridView1.Rows[i].Cells[1].Value = "";
+                            int rowIndex = dataGridView1.Rows.Add(
+                                i < hit.Count ? hit[i] : "",
+                                i < hitwho.Count ? hitwho[i] : "",
+                                i < hitTimes.Count ? hitTimes[i] : "",
+                                i < tookhit.Count ? tookhit[i] : "",
+                                i < igothit.Count ? igothit[i] : "",
+                                i < tookhitTimes.Count ? tookhitTimes[i] : "",
+                                i < killed.Count ? killed[i] : "",
+                                i < killedTimes.Count ? killedTimes[i] : "",
+                                i < dead.Count ? dead[i] : "",
+                                i < deadTimes.Count ? deadTimes[i] : "",
+                                i < enslaved.Count ? enslaved[i] : "",
+                                i < enslavedTimes.Count ? enslavedTimes[i] : ""
+                            );
 
+                            // Güzel zebra pattern - her satır farklı renk
+                            if (rowIndex % 2 == 0)
+                            {
+                                // Çift satırlar - daha koyu
+                                dataGridView1.Rows[rowIndex].DefaultCellStyle.BackColor = Color.FromArgb(40, 40, 45);
+                                dataGridView1.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.FromArgb(220, 220, 220);
                             }
+                            else
+                            {
+                                // Tek satırlar - daha açık
+                                dataGridView1.Rows[rowIndex].DefaultCellStyle.BackColor = Color.FromArgb(50, 50, 55);
+                                dataGridView1.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.White;
+                            }
+
+                            // Seçili satır rengi
+                            dataGridView1.Rows[rowIndex].DefaultCellStyle.SelectionBackColor = Color.FromArgb(55, 71, 85);
+                            dataGridView1.Rows[rowIndex].DefaultCellStyle.SelectionForeColor = Color.FromArgb(255, 255, 255);
                         }
-                        for (int w = 0; w < maxRowCount; w++)
-                        {
-
-                            if (w < tookhit.Count)
-                            {
-                                dataGridView1.Rows[w].Cells[2].Value = tookhit[w];
-                            }
-                            else
-                            {
-                                dataGridView1.Rows[w].Cells[2].Value = "";
-                            }
-
-
-                            if (w < igothit.Count)
-                            {
-                                dataGridView1.Rows[w].Cells[3].Value = igothit[w];
-                            }
-                            else
-                            {
-                                dataGridView1.Rows[w].Cells[3].Value = "";
-                            }
-                        }
-
-                        for (int j = 0; j < killed.Count; j++)
-                        {
-                            if (j < killed.Count)
-                            {
-                                dataGridView1.Rows[j].Cells[4].Value = killed[j];
-                            }
-                            else
-                            {
-                                dataGridView1.Rows[j].Cells[4].Value = "";
-                            }
-
-                        }
-                        for (int k = 0; k < enslaved.Count; k++)
-                        {
-                            if (k < enslaved.Count)
-                            {
-                                dataGridView1.Rows[k].Cells[5].Value = enslaved[k];
-                            }
-                            else
-                            {
-                                dataGridView1.Rows[k].Cells[5].Value = "";
-                            }
-                        }
-                        for (int d = 0; d < dead.Count; d++)
-                        {
-                            if (d < dead.Count)
-                            {
-                                dataGridView1.Rows[d].Cells[6].Value = dead[d];
-                            }
-                            else
-                            {
-                                dataGridView1.Rows[d].Cells[6].Value = "";
-                            }
-                        }
-
-
                     }
                 }
             }
             catch (Exception ex)
             {
-                string a;
-                a= ex.Message;
-                a = "";
-                MessageBox.Show("Log-Parse-Issue");
+                MessageBox.Show($"Log Parse Error: {ex.Message}\n\nDetails: {ex.StackTrace}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
+
 
         private void Form1_Load(object sender, EventArgs e)
         {
